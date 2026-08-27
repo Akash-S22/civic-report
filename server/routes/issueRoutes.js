@@ -5,7 +5,8 @@ const {
     getIssues,
     getIssueById,
     updateIssue,
-    deleteIssue
+    deleteIssue,
+    supportIssue
 } = require("../controllers/issueController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -17,4 +18,5 @@ router.get("/", getIssues);
 router.get("/:id", getIssueById);
 router.put("/:id", protect, updateIssue);
 router.delete("/:id", protect, deleteIssue);
+router.post("/:id/support", protect, supportIssue);
 module.exports = router;

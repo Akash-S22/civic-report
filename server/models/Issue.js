@@ -27,6 +27,19 @@ const issueSchema = new mongoose.Schema(
             ]
         },
 
+        severity: {
+            type: String,
+            required: true,
+            enum: ["low", "medium", "high", "critical"]
+        },
+
+        supportVotes: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User"
+            }
+        ],
+
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

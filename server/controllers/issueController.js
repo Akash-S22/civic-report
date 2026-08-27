@@ -2,11 +2,11 @@ const Issue = require("../models/Issue");
 
 const createIssue = async (req, res) => {
     try {
-        const { title, description, category } = req.body;
+        const { title, description, category, severity } = req.body;
 
-        if (!title || !description || !category) {
+        if (!title || !description || !category || !severity) {
             return res.status(400).json({
-                message: "Title, description and category are required"
+                message: "Title, description, category and severity are required"
             });
         }
 
@@ -14,6 +14,7 @@ const createIssue = async (req, res) => {
             title,
             description,
             category,
+            severity,
             createdBy: req.user.userId
         });
 
@@ -59,13 +60,26 @@ if (category && !validCategories.includes(category)) {
         }
 
         const issues = await Issue.find(filter)
-            .populate("createdBy", "name email")
-            .sort({ createdAt: -1 });
+    .populate("createdBy", "name email")
+    .sort({ createdAt: -1 });
 
-        res.status(200).json({
-            count: issues.length,
-            issues
-        });
+const formattedIssues = issues.map(issue => ({
+    _id: issue._id,
+    title: issue.title,
+    description: issue.description,
+    category: issue.category,
+    severity: issue.severity,
+    status: issue.status,
+    createdBy: issue.createdBy,
+    supportCount: issue.supportVotes.length,
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt
+}));
+
+       res.status(200).json({
+    count: formattedIssues.length,
+    issues: formattedIssues
+});
     } catch (error) {
         res.status(500).json({
             message: "Failed to fetch issues",
@@ -87,9 +101,20 @@ const getIssueById = async (req, res) => {
             });
         }
 
-        res.status(200).json({
-            issue
-        });
+       res.status(200).json({
+    issue: {
+        _id: issue._id,
+        title: issue.title,
+        description: issue.description,
+        category: issue.category,
+        severity: issue.severity,
+        status: issue.status,
+        createdBy: issue.createdBy,
+        supportCount: issue.supportVotes.length,
+        createdAt: issue.createdAt,
+        updatedAt: issue.updatedAt
+    }
+});
     } catch (error) {
         res.status(500).json({
             message: "Failed to fetch issue",
@@ -175,10 +200,58 @@ const deleteIssue = async (req, res) => {
     }
 };
 
+const supportIssue = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const issue = await Issue.findById(id);
+
+        if (!issue) {
+            return res.status(404).json({
+                message: "Issue not found"
+            });
+        }
+
+        const updatedIssue = await Issue.findOneAndUpdate(
+            {
+                _id: id,
+                supportVotes: {
+                    $ne: req.user.userId
+                }
+            },
+            {
+                $addToSet: {
+                    supportVotes: req.user.userId
+                }
+            },
+            {
+               returnDocument: 'after'
+            }
+        );
+
+        if (!updatedIssue) {
+            return res.status(409).json({
+                message: "You have already supported this issue"
+            });
+        }
+
+        res.status(200).json({
+            message: "Issue supported successfully",
+            supportCount: updatedIssue.supportVotes.length
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to support issue",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createIssue,
     getIssues,
     getIssueById,
     updateIssue,
-    deleteIssue
+    deleteIssue,
+    supportIssue
 };
