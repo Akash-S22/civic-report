@@ -76,7 +76,36 @@ const issueSchema = new mongoose.Schema(
                 "rejected"
             ],
             default: "reported"
+        },
+
+  statusHistory: [
+    {
+        status: {
+            type: String,
+            enum: [
+                "reported",
+                "under_review",
+                "acknowledged",
+                "in_progress",
+                "community_verification",
+                "resolved",
+                "rejected"
+            ],
+            required: true
+        },
+
+        changedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        },
+
+        changedAt: {
+            type: Date,
+            default: Date.now
         }
+    }
+],
+
     },
     {
         timestamps: true

@@ -1,5 +1,6 @@
 const express = require("express");
 const upload = require("../middleware/uploadMiddleware");
+const { adminOnly } = require("../middleware/adminMiddleware");
 
 const {
     createIssue,
@@ -8,7 +9,8 @@ const {
     updateIssue,
     deleteIssue,
     supportIssue,
-    getNearbyIssues
+    getNearbyIssues,
+    updateIssueStatus
 } = require("../controllers/issueController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -22,4 +24,10 @@ router.get("/:id", getIssueById);
 router.put("/:id", protect, updateIssue);
 router.delete("/:id", protect, deleteIssue);
 router.post("/:id/support", protect, supportIssue);
+router.patch(
+    "/:id/status",
+    protect,
+    adminOnly,
+    updateIssueStatus
+);
 module.exports = router;

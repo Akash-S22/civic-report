@@ -2,6 +2,16 @@ const Issue = require("../models/Issue");
 const cloudinary = require("../config/cloudinary");
 const asyncHandler = require("../middleware/asyncHandler");
 
+const allowedTransitions = {
+    reported: ["under_review", "rejected"],
+    under_review: ["acknowledged", "rejected"],
+    acknowledged: ["in_progress"],
+    in_progress: ["community_verification"],
+    community_verification: [],
+    resolved: [],
+    rejected: []
+};
+
 const createIssue = async (req, res) => {
     try {
         const {
@@ -50,21 +60,30 @@ const createIssue = async (req, res) => {
             uploadStream.end(req.file.buffer);
         });
 
-        const issue = await Issue.create({
-            title,
-            description,
-            category,
-            severity,
+       const issue = await Issue.create({
+    title,
+    description,
+    category,
+    severity,
 
-            photoUrl: uploadResult.secure_url,
+    photoUrl: uploadResult.secure_url,
 
-            location: {
-                type: "Point",
-                coordinates: [Number(longitude), Number(latitude)]
-            },
+    location: {
+        type: "Point",
+        coordinates: [Number(longitude), Number(latitude)]
+    },
 
-            createdBy: req.user.userId
-        });
+    createdBy: req.user.userId,
+
+    status: "reported",
+
+    statusHistory: [
+        {
+            status: "reported",
+            changedBy: req.user.userId
+        }
+    ]
+});
 
         res.status(201).json({
             message: "Issue created successfully",
@@ -141,7 +160,8 @@ const getIssueById = async (req, res) => {
         const { id } = req.params;
 
         const issue = await Issue.findById(id)
-            .populate("createdBy", "name email");
+    .populate("createdBy", "name email")
+    .populate("statusHistory.changedBy", "name email");
 
         if (!issue) {
             return res.status(404).json({
@@ -157,6 +177,7 @@ const getIssueById = async (req, res) => {
         category: issue.category,
         severity: issue.severity,
         status: issue.status,
+        statusHistory: issue.statusHistory,
         createdBy: issue.createdBy,
         supportCount: issue.supportVotes.length,
         hasSupported: req.user
@@ -351,10 +372,65 @@ const getNearbyIssues = async (req, res) => {
     }
 };
 
+const updateIssueStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({
+                message: "Status is required"
+            });
+        }
+
+        const issue = await Issue.findById(id);
+
+        if (!issue) {
+            return res.status(404).json({
+                message: "Issue not found"
+            });
+        }
+
+        const allowedNextStatuses = allowedTransitions[issue.status];
+
+        if (!allowedNextStatuses) {
+            return res.status(400).json({
+                message: "Invalid current issue status"
+            });
+        }
+
+        if (!allowedNextStatuses.includes(status)) {
+            return res.status(400).json({
+                message: `Cannot change status from ${issue.status} to ${status}`
+            });
+        }
+
+        issue.status = status;
+
+issue.statusHistory.push({
+    status,
+    changedBy: req.user.userId
+});
+
+await issue.save();
+
+        res.status(200).json({
+            message: "Issue status updated successfully",
+            issue
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to update issue status",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createIssue,
     getIssues,
     getIssueById,
+    updateIssueStatus,
     updateIssue,
     deleteIssue,
     supportIssue,
