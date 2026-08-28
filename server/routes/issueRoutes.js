@@ -2,6 +2,10 @@ const express = require("express");
 const upload = require("../middleware/uploadMiddleware");
 const { adminOnly } = require("../middleware/adminMiddleware");
 const { verifyResolution } = require("../controllers/verificationController");
+const {
+    createComment,
+    getComments
+} = require("../controllers/commentController");
 
 const {
     createIssue,
@@ -26,6 +30,15 @@ router.get(
     "/:id/proximity",
     protect,
     checkIssueProximity
+);
+router.post(
+    "/:id/comments",
+    protect,
+    createComment
+);
+router.get(
+    "/:id/comments",
+    getComments
 );
 router.post(
     "/:id/verify",
