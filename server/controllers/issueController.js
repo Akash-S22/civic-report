@@ -1,20 +1,68 @@
 const Issue = require("../models/Issue");
+const cloudinary = require("../config/cloudinary");
+const asyncHandler = require("../middleware/asyncHandler");
 
 const createIssue = async (req, res) => {
     try {
-        const { title, description, category, severity } = req.body;
+        const {
+            title,
+            description,
+            category,
+            severity,
+            latitude,
+            longitude
+        } = req.body;
 
-        if (!title || !description || !category || !severity) {
+        if (
+            !title ||
+            !description ||
+            !category ||
+            !severity ||
+            latitude === undefined ||
+            longitude === undefined
+        ) {
             return res.status(400).json({
-                message: "Title, description, category and severity are required"
+                message:
+                    "Title, description, category, severity, latitude and longitude are required"
             });
         }
+
+        if (!req.file) {
+            return res.status(400).json({
+                message: "Issue photo is required"
+            });
+        }
+
+        const uploadResult = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    folder: "civic-report/issues"
+                },
+                (error, result) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+                }
+            );
+
+            uploadStream.end(req.file.buffer);
+        });
 
         const issue = await Issue.create({
             title,
             description,
             category,
             severity,
+
+            photoUrl: uploadResult.secure_url,
+
+            location: {
+                type: "Point",
+                coordinates: [Number(longitude), Number(latitude)]
+            },
+
             createdBy: req.user.userId
         });
 
@@ -30,63 +78,63 @@ const createIssue = async (req, res) => {
     }
 };
 
-const getIssues = async (req, res) => {
-    try {
-        const { category, status } = req.query;
-        
-        const validCategories = [
-    "garbage",
-    "pothole",
-    "road_damage",
-    "streetlight",
-    "drainage",
-    "other"
-];
+const getIssues = asyncHandler(async (req, res) => {
+    const { category, status } = req.query;
 
-if (category && !validCategories.includes(category)) {
-    return res.status(400).json({
-        message: "Invalid category"
-    });
-}
+    const filter = {};
 
-        const filter = {};
+    const validCategories = [
+        "garbage",
+        "pothole",
+        "road_damage",
+        "streetlight",
+        "drainage",
+        "other"
+    ];
 
-        if (category) {
-            filter.category = category;
+    if (category) {
+        if (!validCategories.includes(category)) {
+            return res.status(400).json({
+                message: "Invalid category"
+            });
         }
 
-        if (status) {
-            filter.status = status;
-        }
-
-        const issues = await Issue.find(filter)
-    .populate("createdBy", "name email")
-    .sort({ createdAt: -1 });
-
-const formattedIssues = issues.map(issue => ({
-    _id: issue._id,
-    title: issue.title,
-    description: issue.description,
-    category: issue.category,
-    severity: issue.severity,
-    status: issue.status,
-    createdBy: issue.createdBy,
-    supportCount: issue.supportVotes.length,
-    createdAt: issue.createdAt,
-    updatedAt: issue.updatedAt
-}));
-
-       res.status(200).json({
-    count: formattedIssues.length,
-    issues: formattedIssues
-});
-    } catch (error) {
-        res.status(500).json({
-            message: "Failed to fetch issues",
-            error: error.message
-        });
+        filter.category = category;
     }
-};
+
+    if (status) {
+        filter.status = status;
+    }
+
+    const issues = await Issue.find(filter)
+        .populate("createdBy", "name email")
+        .sort({ createdAt: -1 });
+
+    const formattedIssues = issues.map(issue => ({
+        _id: issue._id,
+        title: issue.title,
+        description: issue.description,
+        category: issue.category,
+        severity: issue.severity,
+        status: issue.status,
+        createdBy: issue.createdBy,
+        supportCount: issue.supportVotes.length,
+        hasSupported: req.user
+            ? issue.supportVotes.some(
+                  userId => userId.toString() === req.user.userId
+              )
+            : false,
+        photoUrl: issue.photoUrl,
+        location: issue.location,
+        createdAt: issue.createdAt,
+        updatedAt: issue.updatedAt
+    }));
+
+    res.status(200).json({
+        count: formattedIssues.length,
+        issues: formattedIssues
+    });
+});
 
 const getIssueById = async (req, res) => {
     try {
@@ -101,7 +149,7 @@ const getIssueById = async (req, res) => {
             });
         }
 
-       res.status(200).json({
+      res.status(200).json({
     issue: {
         _id: issue._id,
         title: issue.title,
@@ -111,6 +159,13 @@ const getIssueById = async (req, res) => {
         status: issue.status,
         createdBy: issue.createdBy,
         supportCount: issue.supportVotes.length,
+        hasSupported: req.user
+            ? issue.supportVotes.some(
+                  userId => userId.toString() === req.user.userId
+              )
+            : false,
+        photoUrl: issue.photoUrl,
+        location: issue.location,
         createdAt: issue.createdAt,
         updatedAt: issue.updatedAt
     }
@@ -247,11 +302,61 @@ const supportIssue = async (req, res) => {
     }
 };
 
+const getNearbyIssues = async (req, res) => {
+    try {
+        const { latitude, longitude, distance = 1000 } = req.query;
+
+        if (latitude === undefined || longitude === undefined) {
+            return res.status(400).json({
+                message: "Latitude and longitude are required"
+            });
+        }
+
+        const lat = Number(latitude);
+        const lng = Number(longitude);
+        const maxDistance = Number(distance);
+
+        if (
+            Number.isNaN(lat) ||
+            Number.isNaN(lng) ||
+            Number.isNaN(maxDistance)
+        ) {
+            return res.status(400).json({
+                message: "Latitude, longitude and distance must be numbers"
+            });
+        }
+
+        const issues = await Issue.find({
+            location: {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [lng, lat]
+                    },
+                    $maxDistance: maxDistance
+                }
+            }
+        })
+            .populate("createdBy", "name email");
+
+        res.status(200).json({
+            count: issues.length,
+            issues
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to fetch nearby issues",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createIssue,
     getIssues,
     getIssueById,
     updateIssue,
     deleteIssue,
-    supportIssue
+    supportIssue,
+    getNearbyIssues
 };

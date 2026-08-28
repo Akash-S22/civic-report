@@ -33,6 +33,11 @@ const issueSchema = new mongoose.Schema(
             enum: ["low", "medium", "high", "critical"]
         },
 
+        photoUrl: {
+    type: String,
+    required: true
+},
+
         supportVotes: [
             {
                 type: mongoose.Schema.Types.ObjectId,
@@ -45,6 +50,19 @@ const issueSchema = new mongoose.Schema(
             ref: "User",
             required: true
         },
+
+        location: {
+    type: {
+        type: String,
+        enum: ["Point"],
+        required: true
+    },
+
+    coordinates: {
+        type: [Number],
+        required: true
+    }
+},
 
         status: {
             type: String,
@@ -63,6 +81,11 @@ const issueSchema = new mongoose.Schema(
     {
         timestamps: true
     }
+
 );
+
+issueSchema.index({
+    location: "2dsphere"
+});
 
 module.exports = mongoose.model("Issue", issueSchema);
