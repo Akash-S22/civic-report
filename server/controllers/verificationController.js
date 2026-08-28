@@ -4,6 +4,11 @@ const cloudinary = require("../config/cloudinary");
 const {
     shouldResolveIssue
 } = require("../utils/verificationUtils");
+
+const {
+    getVerificationStats
+} = require("../services/verificationService");
+
 const MAX_VERIFICATION_DISTANCE = 1000;
 
 const verifyResolution = async (req, res) => {
@@ -118,11 +123,9 @@ const verifyResolution = async (req, res) => {
             }
         });
 
-        const verifications = await Verification.find({
-    issue: id
-});
+        const verificationStats = await getVerificationStats(id);
 
-const shouldResolve = shouldResolveIssue(verifications);
+const shouldResolve = shouldResolveIssue(verificationStats);
 
 if (shouldResolve) {
     issue.status = "resolved";
@@ -135,10 +138,11 @@ if (shouldResolve) {
     await issue.save();
 }
 
-        res.status(201).json({
+   res.status(201).json({
     message: "Verification submitted successfully",
     verification,
-    issueStatus: issue.status
+    issueStatus: issue.status,
+    verificationStats
 });
 
     } catch (error) {
