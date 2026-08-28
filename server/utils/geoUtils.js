@@ -1,0 +1,5 @@
+const MAX_VERIFICATION_DISTANCE = 1000;
+
+module.exports = {
+    MAX_VERIFICATION_DISTANCE
+};

@@ -1,6 +1,9 @@
 const Issue = require("../models/Issue");
 const cloudinary = require("../config/cloudinary");
 const asyncHandler = require("../middleware/asyncHandler");
+const {
+    MAX_VERIFICATION_DISTANCE
+} = require("../utils/geoUtils");
 
 const allowedTransitions = {
     reported: ["under_review", "rejected"],
@@ -426,6 +429,56 @@ await issue.save();
     }
 };
 
+const checkIssueProximity = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { latitude, longitude } = req.query;
+
+        if (latitude === undefined || longitude === undefined) {
+            return res.status(400).json({
+                message: "Latitude and longitude are required"
+            });
+        }
+
+        const lat = Number(latitude);
+        const lng = Number(longitude);
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return res.status(400).json({
+                message: "Latitude and longitude must be numbers"
+            });
+        }
+
+        const issue = await Issue.findOne({
+            _id: id,
+            location: {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [lng, lat]
+                    },
+                    $maxDistance: MAX_VERIFICATION_DISTANCE
+                }
+            }
+        });
+
+        if (!issue) {
+            return res.status(403).json({
+                message: "You are too far away from this issue"
+            });
+        }
+
+        res.status(200).json({
+            message: "You are close enough to verify this issue"
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to check proximity",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createIssue,
     getIssues,
@@ -434,5 +487,6 @@ module.exports = {
     updateIssue,
     deleteIssue,
     supportIssue,
-    getNearbyIssues
+    getNearbyIssues,
+    checkIssueProximity
 };
