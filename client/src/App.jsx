@@ -1,35 +1,32 @@
-import { useEffect, useState } from "react";
-import "./App.css";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import IssueDetails from "./pages/IssueDetails";
+import CreateIssue from "./pages/CreateIssue";
 
 function App() {
-    const [issues, setIssues] = useState([]);
-
-    useEffect(() => {
-        fetch("http://localhost:5000/api/issues")
-            .then((response) => response.json())
-            .then((data) => {
-                setIssues(data.issues);
-            })
-            .catch((error) => {
-                console.error("Failed to fetch issues:", error);
-            });
-    }, []);
-
     return (
-        <div>
-            <h1>Civic Report</h1>
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<Home />} />
 
-            <p>Total issues: {issues.length}</p>
+                <Route path="/login" element={<Login />} />
 
-            {issues.map((issue) => (
-                <div key={issue._id}>
-                    <h2>{issue.title}</h2>
-                    <p>{issue.description}</p>
-                    <p>Severity: {issue.severity}</p>
-                    <p>Supports: {issue.supportCount}</p>
-                </div>
-            ))}
-        </div>
+                <Route path="/register" element={<Register />} />
+
+                <Route
+                    path="/issues/:id"
+                    element={<IssueDetails />}
+                />
+
+                <Route
+                    path="/issues/create"
+                    element={<CreateIssue />}
+                />
+            </Routes>
+        </BrowserRouter>
     );
 }
 
