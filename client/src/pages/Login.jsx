@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
     const [email, setEmail] = useState("");
@@ -10,7 +11,7 @@ function Login() {
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
-
+    const { login } = useAuth();
     const handleSubmit = async (event) => {
         event.preventDefault();
 
@@ -25,7 +26,7 @@ function Login() {
 
             const token = response.data.token;
 
-            localStorage.setItem("token", token);
+            login(token);
 
             navigate("/");
         } catch (error) {

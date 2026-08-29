@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Home() {
     const [issues, setIssues] = useState([]);
-
+     const {
+    user,
+    isAuthenticated,
+    loading,
+    logout
+} = useAuth();
+   
     useEffect(() => {
         const fetchIssues = async () => {
             try {
@@ -26,7 +33,20 @@ function Home() {
     return (
         <div>
             <h1>Civic Report</h1>
+            {loading && <p>Loading user...</p>}
 
+{user && (
+    <p>
+        Welcome, {user.name}
+    </p>
+)}
+
+
+            {isAuthenticated && (
+ <button onClick={logout}>
+        Logout
+    </button>
+)}
             <p>Total issues: {issues.length}</p>
 
             {issues.map((issue) => (
@@ -44,6 +64,7 @@ function Home() {
                     </p>
                 </div>
             ))}
+   
         </div>
     );
 }
