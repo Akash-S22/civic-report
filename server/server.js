@@ -7,8 +7,10 @@ const testRoutes = require("./routes/testRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const errorHandler = require("./middleware/errorMiddleware");
 
+const cors = require("cors");
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 connectDB();
