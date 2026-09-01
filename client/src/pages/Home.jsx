@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import IssueCard from "../components/IssueCard";
 
 function Home() {
     const [issues, setIssues] = useState([]);
@@ -49,21 +50,12 @@ function Home() {
 )}
             <p>Total issues: {issues.length}</p>
 
-            {issues.map((issue) => (
-                <div key={issue._id}>
-                    <h2>{issue.title}</h2>
-
-                    <p>{issue.description}</p>
-
-                    <p>
-                        Severity: {issue.severity}
-                    </p>
-
-                    <p>
-                        Supports: {issue.supportCount}
-                    </p>
-                </div>
-            ))}
+           {issues.map((issue) => (
+    <IssueCard
+        key={issue._id}
+        issue={issue}
+    />
+))}
    
         </div>
     );
