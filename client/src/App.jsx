@@ -8,10 +8,12 @@ import CreateIssue from "./pages/CreateIssue";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/AdminDashboard";
+import Navbar from "./components/Navbar";
 
 function App() {
     return (
         <BrowserRouter>
+            <Navbar />  
             <Routes>
                 <Route path="/" element={<Home />} />
 
@@ -42,6 +44,7 @@ function App() {
     }
 />
             </Routes>
+            
         </BrowserRouter>
     );
 }

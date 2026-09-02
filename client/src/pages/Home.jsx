@@ -7,9 +7,7 @@ function Home() {
     const [issues, setIssues] = useState([]);
      const {
     user,
-    isAuthenticated,
     loading,
-    logout
 } = useAuth();
    
     useEffect(() => {
@@ -43,11 +41,7 @@ function Home() {
 )}
 
 
-            {isAuthenticated && (
- <button onClick={logout}>
-        Logout
-    </button>
-)}
+  
             <p>Total issues: {issues.length}</p>
 
            {issues.map((issue) => (
